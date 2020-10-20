@@ -108,3 +108,66 @@ bcftools mpileup -Ou --threads 12 -f menidia_menidia_1-27.fasta shotgun2dovetail
     bcftools call -Ou -mv --threads 12| \
     bcftools filter --threads 12 -s LowQual -e '%QUAL<20 || DP>148' > shotgun2dovetail_1-27.vcf 
 ```
+Second round of filtering for low qual, DP < 20, and homozygous sites
+```
+bcftools filter --threads 12 -e'DP<20 || FILTER="LowQual"' shotgun2dovetail_1-27.vcf > shotgun2dovetail_1-27_filt.vcf 
+###to select only SNPs
+bcftools view -v snps shotgun2dovetail_1-27_filt.vcf > shotgun2dovetail_1-27_filt_snp.vcf
+###to retain only heterozygous sites
+bcftools view -g het shotgun2dovetail_1-27_filt_snp.vcf > shotgun2dovetail_1-27_filt_snp_het.vcf
+```
+To calculate heterozygosity, we divided the number of heterozygous sites surviving the filters by the total number of bases that had depth of coverage between 20 and twice the mode the sequencing depth for each library
+```
+shotgun Connecticut --> 422616334 --> 6160030/422616334 = 0.01458 --> 1.46%
+10x Georgia --> 439762099 --> 5823111/439762099 = 0.01324 --> 1.32%
+```
+Estimate heterozygity in coding regions only
+```
+Heterozygosity coding vs. non-coding
+
+grep "CDS" mme_annotation_draftgenome_clean.noseq.gff > mme_annotation_CDS.gff 
+sort -k1,1n -k4,4n mme_annotation_CDS.gff
+awk '{if($1 < 28){print}}' mme_annotation_CDS.gff | sort -k1,1n -k4,4n > mme_annotation_CDS_1-27.gff
+bedtools map -a mme_annotation_CDS_1-27.gff -b ../dovetail/10x2dovetail_1-27_filt_snp_het.vcf -o count > 10x2dovetail_1-27_filt_snp_het_CDS_1-27.txt
+Number of variants in CDS is sum of last column in 10x2dovetail_1-27_filt_snp_het_CDS_1-27.txt
+awk '{SUM+=$10}END{print SUM}' 10x2dovetail_1-27_filt_snp_het_CDS_1-27.txt ###236098 variant sites in CDS
+
+#Heterozygosity 0.679% Georgia
+
+
+bedtools map -a mme_annotation_CDS_1-27.gff -b ../dovetail/shotgun2dovetail_1-27_filt_snp_het.vcf -o count > shotgun2dovetail_1-27_filt_snp_het_CDS_1-27.txt
+Number of variants in CDS is sum of last column in 10x2dovetail_1-27_filt_snp_het_CDS_1-27.txt
+awk '{SUM+=$10}END{print SUM}' shotgun2dovetail_1-27_filt_snp_het_CDS_1-27.txt ###243376 variant sites in CDS
+
+#Heterozygosity 0.700% Connecticut
+```
+## Structural variant calling
+Call structural variants with Delly2 from shotgun data from Connecticut
+```
+samtools index shotgun2dovetail_1-27.bam
+delly call -g menidia_menidia_1-27.fasta -o SV_shotgun.bcf shotgun2dovetail_1-27.bam
+bcftools view SV_shotgun.bcf > SV_shotgun.vcf
+```
+Filter low quality calls
+```
+grep -v "LowQual" SV_shotgun.vcf > SV_shotgun_hiq.vcf
+```
+Further filtering was done in Excel and combined with SVs merging, for each SV type separately, to collaps redundant calls
+```
+bedtools merge -i ins_20-100.bed > ins_20-100_reduced.bed
+bedtools merge -i del_20-100.bed > del_20-100_reduced.bed
+bedtools merge -i dup_20-100.bed > dup_20-100_reduced.bed
+```
+
+## Manhattan plot for levels of heterozygosity in each of the two genome
+Calculate number of variants in each window
+```
+cd /workdir/anna/dovetail
+### Make 50-kb sliding windows
+bedtools makewindows -g menidia_menidia_tidy.filter1000.fasta.fai -w 50000 | awk '$3 ~ /0000$/' | sed 's/ /\t/g' > genome_windows_50k_4GC.bed
+### Count heterozygous sites for each window
+bedtools map -a genome_windows_50k_4GC.bed -b 10x2dovetail_1-27_filt_snp_het.vcf -o count > 10x_variants_windows.txt
+bedtools map -a genome_windows_50k_4GC.bed -b shotgun2dovetail_1-27_filt_snp_het.vcf -o count > shotgun_variants_windows.txt
+```
+
+
