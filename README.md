@@ -169,5 +169,5 @@ bedtools makewindows -g menidia_menidia_tidy.filter1000.fasta.fai -w 50000 | awk
 bedtools map -a genome_windows_50k_4GC.bed -b 10x2dovetail_1-27_filt_snp_het.vcf -o count > 10x_variants_windows.txt
 bedtools map -a genome_windows_50k_4GC.bed -b shotgun2dovetail_1-27_filt_snp_het.vcf -o count > shotgun_variants_windows.txt
 ```
-
+To plot heterozygosity in 50-kb windows along the genome see R script `manhattan_plot_heterozygosity.R`
 
