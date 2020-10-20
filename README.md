@@ -1,5 +1,5 @@
-# Menidia_menidia_genome
-Scripts accompanying manuscript on sequence and structural variation in the Atlantic silverside (Menidia menidia)
+# Scripts and data for "Chromosome-level assembly of the Atlantic silverside genome reveals extreme levels of sequence diversity and structural genetic variation"
+Scripts accompanying manuscript on sequence and structural variation in the Atlantic silverside (*Menidia menidia*)
 
 ## Genome assembly with 10X data
 
@@ -159,7 +159,7 @@ bedtools merge -i del_20-100.bed > del_20-100_reduced.bed
 bedtools merge -i dup_20-100.bed > dup_20-100_reduced.bed
 ```
 
-## Manhattan plot for levels of heterozygosity in each of the two genome
+## Manhattan plot for levels of heterozygosity in each of the two genomes
 Calculate number of variants in each window
 ```
 cd /workdir/anna/dovetail
