@@ -161,7 +161,7 @@ bedtools merge -i del_20-100.bed > del_20-100_reduced.bed
 bedtools merge -i dup_20-100.bed > dup_20-100_reduced.bed
 ```
 
-## Manhattan plot for levels of heterozygosity in each of the two genomes
+## Manhattan plot for levels of heterozygosity in each of the two genomes from Connecticut and Georgia
 Calculate number of variants in each window
 ```
 cd /workdir/anna/dovetail
@@ -173,3 +173,11 @@ bedtools map -a genome_windows_50k_4GC.bed -b shotgun2dovetail_1-27_filt_snp_het
 ```
 To plot heterozygosity in 50-kb windows along the genome see R script `manhattan_plot_heterozygosity.R`
 
+### Scipts to estimate divergence between the Connecticut and the Georgia genomes 
+```
+nucmer --maxgap 2000 -p mummerCT2GA --mincluster 1000 menidia_menidia_chronly.fa menidia_q30_gapClosed.filter500.fa
+delta-filter -g -l 10000 mummerCT2GA.delta > mummerCT2GA.filter10k.delta
+show-coords -B mummerCT2GA.filter10k.delta > mummerCT2GA.filter10k.tab_tmp
+cut -f 1,6,7,8,9,10,12,13 mummerCT2GA.filter10k.tab_tmp | awk '$7 > 50' | awk '$9=$4-$3+1' | sed -e 's/ /\t/g' - | ( echo -e "CHR2\tCHR1\tS2\tE2\tS1\tE1\tIDY\tLEN2\tLEN1"; cat - ) > mummerCT2GA.filter10k.tab
+```
+To plot divergence along the genome see R script `manhattan_plot_divergence.R`
