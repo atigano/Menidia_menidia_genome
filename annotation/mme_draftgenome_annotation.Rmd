@@ -1,0 +1,444 @@
+---
+title: "Annotation_menidia_genome"
+author: "Arne"
+date: "18/03/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Annotate genome version using the same annotation pipeline and data
+
+Repeat database is already present: /workdir/anna/genome_annotation/repeats_merged.fasta
+
+4. Create GFF3 file
+```{bash, eval=F}
+nohup perl /programs/RepeatMasker_4-0-8/util/rmOutToGFF3.pl /workdir/anna/genome_annotation/repeats_merged.fasta > /workdir/arne/mme_genome_annotation/genome_annotation/mme_genome_repeats.mask.gff3 &
+
+grep -v -e "Satellite" -e ")n" -e "-rich" mme_genome_repeats.mask.gff3 > mme_genome_repeats.complex.gff3
+
+# reformat to work with MAKER
+cat mme_genome_repeats.complex.gff3 | \
+  perl -ane '$id; if(!/^\#/){@F = split(/\t/, $_); chomp $F[-1];$id++; $F[-1] .= "\;ID=$id"; $_ = join("\t", @F)."\n"} print $_' > mme_genome_repeats.complex.reformat.gff3
+```
+
+## Index  genome using STAR:
+```{bash, eval = F}
+nohup sh ./star_genome_indexing.sh /workdir/arne/mme_genome_annotation/genome_annotation/genome_directory/ /workdir/arne/mme_genome_annotation/genome_annotation/menidia_menidia_tidy.filter1000.fasta /workdir/anna/genome_annotation/maker_run1/meme.genome.gff 149 18 200000000000 > /workdir/arne/mme_genome_annotation/genome_annotation/menidia_genome_star_referenceindex_nohup.log &
+```
+
+## Map old and new RNAseq data to  genome using STAR:
+```{bash, eval=F}
+nohup sh ./star_1stpass_mapping_ncbireads.sh /workdir/arne/mme_genome_annotation/genome_annotation/genome_directory/ /workdir/arne/mme_genome_annotation/menidia_ncbi_mrna_data/ /workdir/arne/mme_genome_annotation/genome_annotation/genome_directory/sjdbList.out.tab /workdir/anna/genome_annotation/maker_run1/meme.genome.gff 45000000000 /workdir/arne/mme_genome_annotation/genome_annotation/bams/ /workdir/arne/mme_genome_annotation/menidia_ncbi_mrna_data/mme_sra_rnaseq_sampletable.txt /workdir/arne/mme_genome_annotation/menidia_ncbi_mrna_data/mme_sra_rnaseq_samplelist.txt > /workdir/arne/mme_genome_annotation/genome_annotation/star_rnaseq_mapping_nohup.log &
+
+nohup sh ./star_1stpass_mapping.sh /workdir/arne/mme_genome_annotation/genome_annotation/genome_directory/ /workdir/arne/mme_transcriptomics/rna_seq_fastq/ /workdir/arne/mme_genome_annotation/genome_annotation/genome_directory/sjdbList.out.tab /workdir/anna/genome_annotation/maker_run1/meme.genome.gff 45000000000 /workdir/arne/mme_genome_annotation/genome_annotation/bams/ /workdir/arne/mme_genome_annotation/genome_annotation/mme_rnaseq_sampletable_annot.txt /workdir/arne/mme_genome_annotation/genome_annotation/mme_rnaseq_samplelist_annot.txt > /workdir/arne/mme_transcriptomics/log_files/star_1stpass_mapping_nohup.log &
+```
+
+
+###Download protein sequences for other species:
+
+1. Stickleback
+2. Medaka
+3. Fugu
+4. zebrafish
+5. Tilapia
+6. Platyfish
+7. SwissProt protein database
+
+Align protein fasta files to Atlantic silverside  genome:
+```{bash, eval=F}
+nohup /programs/gth-1.7.1-Linux_x86_64-64bit/bin/gth -genomic /workdir/arne/mme_genome_annotation/genome_annotation/menidia_menidia_tidy.filter1000.fasta -protein /workdir/arne/mme_genome_annotation/protein_fastas/Oryzias_latipes_hni.ASM223471v1.pep.all.fa -gff3out -skipalignmentout -o /workdir/arne/mme_genome_annotation/genome_annotation/gth_olatipes_hni.aln > gth_olatipes_hni_log.nohup &
+
+nohup /programs/gth-1.7.1-Linux_x86_64-64bit/bin/gth -genomic /workdir/arne/mme_genome_annotation/genome_annotation/menidia_menidia_tidy.filter1000.fasta -protein /workdir/arne/mme_genome_annotation/protein_fastas/Danio_rerio.GRCz11.pep.all.fa -gff3out -skipalignmentout -o /workdir/arne/mme_genome_annotation/genome_annotation/gth_drerio_hni.aln > gth_drerio_hni_log.nohup &
+
+nohup /programs/gth-1.7.1-Linux_x86_64-64bit/bin/gth -genomic /workdir/arne/mme_genome_annotation/genome_annotation/menidia_menidia_tidy.filter1000.fasta -protein /workdir/arne/mme_genome_annotation/protein_fastas/uniprot-reviewed_yes.fasta -gff3out -skipalignmentout -o /workdir/arne/mme_genome_annotation/genome_annotation/gth_uniprot.aln > gth_uniprot_log.nohup &
+
+nohup /programs/gth-1.7.1-Linux_x86_64-64bit/bin/gth -genomic /workdir/arne/mme_genome_annotation/genome_annotation/menidia_menidia_tidy.filter1000.fasta -protein /workdir/arne/mme_genome_annotation/protein_fastas/Xiphophorus_maculatus.X_maculatus-5.0-male.pep.all.fa -gff3out -skipalignmentout -o /workdir/arne/mme_genome_annotation/genome_annotation/gth_xmaculatus.aln > gth_xmaculatus_log.nohup &
+
+nohup /programs/gth-1.7.1-Linux_x86_64-64bit/bin/gth -genomic /workdir/arne/mme_genome_annotation/genome_annotation/menidia_menidia_tidy.filter1000.fasta -protein /workdir/arne/mme_genome_annotation/protein_fastas/Gasterosteus_aculeatus.BROADS1.pep.all.fa -gff3out -skipalignmentout -o /workdir/arne/mme_genome_annotation/genome_annotation/gth_gaculeatus.aln > gth_gaculeatus_log.nohup &
+
+nohup /programs/gth-1.7.1-Linux_x86_64-64bit/bin/gth -genomic /workdir/arne/mme_genome_annotation/genome_annotation/menidia_menidia_tidy.filter1000.fasta -protein /workdir/arne/mme_genome_annotation/protein_fastas/Takifugu_rubripes.FUGU5.pep.all.fa -gff3out -skipalignmentout -o /workdir/arne/mme_genome_annotation/genome_annotation/gth_tfugu.aln > gth_tfugu_log.nohup &
+
+nohup /programs/gth-1.7.1-Linux_x86_64-64bit/bin/gth -genomic /workdir/arne/mme_genome_annotation/genome_annotation/menidia_menidia_tidy.filter1000.fasta -protein /workdir/arne/mme_genome_annotation/protein_fastas/Oreochromis_niloticus_GCF_001858045.2_O_niloticus_UMD_NMBU_protein.fasta -gff3out -skipalignmentout -o /workdir/arne/mme_genome_annotation/genome_annotation/gth_oniloticus.aln > gth_oniloticus_log.nohup &
+```
+
+
+###Clean and merge RNAseq reads (8 old datasets, 4 per group from new dataset)
+```{bash, eval=F}
+nohup samtools view -q 30 -b PANY_WL_241_Aligned.sortedByCoord.out.bam > PANY_WL_241_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b PANY_MT_247_Aligned.sortedByCoord.out.bam > PANY_MT_247_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b PANY_MT_246_Aligned.sortedByCoord.out.bam > PANY_MT_246_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b PANY_WL_242_Aligned.sortedByCoord.out.bam > PANY_WL_242_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b PANY_WL_245_Aligned.sortedByCoord.out.bam > PANY_WL_245_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b PANY_WL_244_Aligned.sortedByCoord.out.bam > PANY_WL_244_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b PANY_WL_243_Aligned.sortedByCoord.out.bam > PANY_WL_243_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b PANY_MT_248_Aligned.sortedByCoord.out.bam > PANY_MT_248_Aligned.sortedByCoord.q30.bam & 
+nohup samtools view -q 30 -b jj26_04_Aligned.sortedByCoord.out.bam > JJ26_04_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b jj26_16_Aligned.sortedByCoord.out.bam > JJ26_16_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b jj26_15_Aligned.sortedByCoord.out.bam > JJ26_15_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b jj26_12_Aligned.sortedByCoord.out.bam > JJ26_12_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b jj20_09_Aligned.sortedByCoord.out.bam > JJ20_09_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b jj20_04_Aligned.sortedByCoord.out.bam > JJ20_04_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b jj20_03_Aligned.sortedByCoord.out.bam > JJ20_03_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b jj20_02_Aligned.sortedByCoord.out.bam > JJ20_02_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b pp26_16_Aligned.sortedByCoord.out.bam > PP26_16_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b pp26_12_Aligned.sortedByCoord.out.bam > PP26_12_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b pp26_11_Aligned.sortedByCoord.out.bam > PP26_11_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b pp26_08_Aligned.sortedByCoord.out.bam > PP26_08_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b pp20_01_Aligned.sortedByCoord.out.bam > PP20_01_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b pp20_02_Aligned.sortedByCoord.out.bam > PP20_02_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b pp20_03_Aligned.sortedByCoord.out.bam > PP20_03_Aligned.sortedByCoord.q30.bam &
+nohup samtools view -q 30 -b pp20_04_Aligned.sortedByCoord.out.bam > PP20_04_Aligned.sortedByCoord.q30.bam &
+
+#Merge all bam files into one:
+nohup samtools merge -b mme_filteredbams_annot.txt mme_genomeannot_comb_rnaseq.bam &
+```
+
+
+###Repeatmask genome: but not simple repeats
+```{bash, eval=F}
+#Note that you cannot use RepeatMasker with a gzipped assembly fasta file, eg. REFERENCE.fa.gz; you need to unzip the file.
+nohup /programs/RepeatMasker/RepeatMasker -xm -xsmall -gff -lib /workdir/anna/genome_annotation/repeats_merged.fasta /workdir/arne/mme_genome_annotation/genome_annotation/menidia_menidia_tidy.filter1000.fasta -pa 8 -q > /workdir/arne/output_logfiles/mme_repeatmasker_genome_nohup.log &
+
+#REFERENCE.fa is the genome assembly fasta file,
+#-lib : specifies a repeat library fasta file (eg. OVOC.repeatLib.fa),
+#-xm : creates an additional output file in cross_match format (for parsing),
+#-xsmall : returns repetitive regions in lowercase rather than masked,
+#-gff : creates a gff file of the repeat regions
+```
+
+4. Create GFF3 file
+```{bash, eval=F}
+nohup perl /programs/RepeatMasker_4-0-8/util/rmOutToGFF3.pl /workdir/arne/mme_genome_annotation/genome_annotation/menidia_menidia_tidy.filter1000.fasta.out > /workdir/arne/mme_genome_annotation/genome_annotation/menidia_menidia_tidy.filter1000.mask.gff3 &
+
+grep -v -e "Satellite" -e ")n" -e "-rich" menidia_menidia_tidy.filter1000.mask.gff3 > menidia_menidia_tidy.filter1000.mask.complex.gff3
+# reformat to work with MAKER
+cat menidia_menidia_tidy.filter1000.mask.complex.gff3 | perl -ane '$id; if(!/^\#/){@F = split(/\t/, $_); chomp $F[-1];$id++; $F[-1] .= "\;ID=$id"; $_ = join("\t", @F)."\n"} print $_' > menidia_menidia_tidy.filter1000.mask.complex.reformat.gff3
+```
+
+
+###Annotate the softmasked genome using the Braker2 pipeline:
+
+Set up braker2/maker2 session (run before each session):
+```{bash, eval=F}
+export LC_ALL=en_US.utf-8
+export LANG=en_US.utf-8
+export LD_LIBRARY_PATH=/programs/boost_1_62_0/lib
+export AUGUSTUS_CONFIG_PATH=/workdir/arne/augustus_config
+export AUGUSTUS_BIN_PATH=/programs/augustus/bin
+export AUGUSTUS_SCRIPTS_PATH=/programs/augustus/scripts
+export GENEMARK_PATH=/workdir/arne/gm_et_linux_64
+export PATH=/workdir/arne/gm_et_linux_64:$PATH
+export PATH=/programs/BRAKER-2.1.4/scripts:$PATH
+export PERL5LIB=/programs/PERL/lib/perl5/site_perl/5.22.0:/programs/PERL/lib/perl5
+export SAMTOOLS_PATH=/programs/samtools-1.9/bin
+export BAMTOOLS_PATH=/programs/bin/util
+export DIAMOND_PATH=/programs/diamond
+export CDBTOOLS_PATH=/programs/cdbfasta
+export PATH=/programs/gth-1.7.1-Linux_x86_64-64bit/bin:$PATH
+export PATH=/programs/spaln2.3.3f.linux64/bin:$PATH
+export PATH=/programs/exonerate-2.2.0-x86_64/bin:$PATH
+export PATH=/workdir/arne/mme_genome_annotation/genome_annotation/maker/maker/bin:$PATH
+export PATH=/programs/snap:$PATH
+export ZOE=/programs/snap/Zoe
+export LD_LIBRARY_PATH=/programs/boost_1_62_0/lib
+```
+
+Run braker2 pipeline with proteins and RNAseq data:
+```{bash, eval=F}
+nohup braker.pl --genome=/workdir/arne/mme_genome_annotation/genome_annotation/menidia_menidia_tidy.filter1000.masked.fasta --bam=/workdir/arne/mme_genome_annotation/genome_annotation/bams/JJ20_02_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/JJ20_03_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/JJ20_04_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/JJ20_09_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/JJ26_04_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/JJ26_12_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/JJ26_15_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/JJ26_16_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/PANY_MT_246_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/PANY_MT_247_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/PANY_MT_248_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/PANY_WL_241_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/PANY_WL_242_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/PANY_WL_243_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/PANY_WL_244_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/PANY_WL_245_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/PP20_01_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/PP20_02_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/PP20_03_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/PP20_04_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/PP26_08_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/PP26_11_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/PP26_12_Aligned.sortedByCoord.q30.bam,/workdir/arne/mme_genome_annotation/genome_annotation/bams/PP26_16_Aligned.sortedByCoord.q30.bam --prot_aln=/workdir/arne/mme_genome_annotation/genome_annotation/gth_olatipes_hni.aln,/workdir/arne/mme_genome_annotation/genome_annotation/gth_drerio_hni.aln,/workdir/arne/mme_genome_annotation/genome_annotation/gth_xmaculatus.aln,/workdir/arne/mme_genome_annotation/genome_annotation/gth_uniprot.aln,/workdir/arne/mme_genome_annotation/genome_annotation/gth_oniloticus.aln,/workdir/arne/mme_genome_annotation/genome_annotation/gth_gaculeatus.aln,/workdir/arne/mme_genome_annotation/genome_annotation/gth_tfugu.aln --prg=gth --softmasking --species=menidia_ --gth2traingenes --gff3 > braker2_nohup.log &
+```
+
+
+
+###Annotate the genome using the Maker2 pipeline:
+
+1. Set up maker
+```{bash, eval=F}
+cd /workdir/arne/mme_genome_annotation/genome_annotation/maker
+cp -rH /programs/maker /workdir/arne/mme_genome_annotation/genome_annotation/maker
+which maker
+
+maker -CTL
+```
+
+2. Run Maker2 with transcriptome and protein fastas only (seetings for maker_opts.ctl)
+```{bash, eval=F}
+#est=/workdir/arne/mme_genome_annotation/GEVY01.1.fasta 
+#protein=/workdir/arne/mme_genome_annotation/protein_fastas/uniprot_sprot.fasta,/workdir/arne/mme_genome_annotation/protein_fastas/Oreochromis_niloticus_GCF_001858045.2_O_niloticus_UMD_NMBU_protein.fasta,/workdir/arne/mme_genome_annotation/protein_fastas/Oryzias_latipes_hni.ASM223471v1.pep.all.fa,/workdir/arne/mme_genome_annotation/protein_fastas/Takifugu_rubripes.FUGU5.pep.all.fa,/workdir/arne/mme_genome_annotation/protein_fastas/Xiphophorus_maculatus.X_maculatus-5.0-male.pep.all.fa,/workdir/arne/mme_genome_annotation/protein_fastas/Gasterosteus_aculeatus.BROADS1.pep.all.fa,/workdir/arne/mme_genome_annotation/protein_fastas/Danio_rerio.GRCz11.pep.all.fa #protein sequence file in fasta format (i.e. from mutiple oransisms)
+
+nohup /usr/local/mpich/bin/mpiexec -n 16 maker -base mme_rnd1_est_prot -qq >& maker_mme_rnd1_log.nohup &
+```
+
+Create gff3 file of maker_round1 output
+```{bash, eval=F}
+gff3_merge -d mme_rnd1_est_prot_master_datastore_index.log -o Mme_maker_rnd1.gff
+fasta_merge -d mme_rnd1_est_prot_master_datastore_index.log
+# GFF w/o the sequences
+gff3_merge -n -s -d fasta_merge -d mme_rnd1_est_prot_master_datastore_index.log > Mme_maker_rnd1.noseq.gff
+```
+
+3. Run SNAP using maker2 output from step1 (2x)
+Create SNAP input (script, which comes with maker, will create two files: genome.ann and genome.dna which contain information about the gene sequences (such as exons and introns) as well as the actual DNA sequences)
+```{bash, eval=F}
+maker2zff -x 0.75 -l 50 -d mme_rnd1_est_prot_master_datastore_index.log
+```
+
+Validate gene models with fathom (comes with SNAP) to detect erroneous predictions:
+```{bash, eval=F}
+# gather some stats and validate
+fathom genome.ann genome.dna -gene-stats > gene-stats.log
+fathom genome.ann genome.dna -validate > snap_validate_output.txt
+cat snap_validate_output.txt | grep "error" 
+```
+
+Remove erronous gene models and rerun fathom (should show no errors):
+```{bash, eval=F}
+grep -vwE "MODEL12658" genome.ann > genome.ann2
+grep -vwE "MODEL1861" genome.ann2 > genome.ann3
+grep -vwE "MODEL17853" genome.ann3 > genome.ann4
+
+fathom genome.ann4 genome.dna -validate > snap_validate_output2.txt
+cat snap_validate_output2.txt | grep "error" 
+```
+
+Create the remaining input files for training SNAP and run prediction with SNAP hmm-assembler:
+```{bash, eval=F}
+# collect the training sequences and annotations, plus 1000 surrounding bp for training
+fathom genome.ann4 genome.dna -categorize 1000 > categorize.log
+fathom uni.ann uni.dna -export 1000 -plus > uni-plus.log
+
+# assembly the HMM
+mkdir params
+cd params
+forge ../export.ann ../export.dna > forge.log
+cd ..
+# assembly the HMM
+hmm-assembler.pl my_genome params > mmenidia_genome_snap_rnd1.hmm
+```
+
+4. Run Maker2 (round2) with SNAP
+Before running, let's first recycle the mapping of empicial evidence we have from the first MAKER round, so we don't have to perform all the BLASTs, etc. again.
+```{bash, eval=F}
+# transcript alignments
+awk '{ if ($2 == "est2genome") print $0 }' Mme_maker_rnd1.noseq.gff > Mme_maker_rnd1.est2genome.gff
+# protein alignments
+awk '{ if ($2 == "protein2genome") print $0 }' Mme_maker_rnd1.noseq.gff > Mme_maker_rnd1.protein2genome.gff
+# repeat alignments
+awk '{ if ($2 ~ "repeat") print $0 }' Mme_maker_rnd1.noseq.gff > Mme_maker_rnd1.repeats.gff
+```
+
+We will now link the newly created SNAP hmm file in the MAKER control file. Change the following line in the maker_opts.ctl file:
+
+snaphmm=/workdir/arne/mme_genome_annotation/genome_annotation/maker/mme_rnd1_est_prot.maker.output/mmenidia_genome_snap_rnd1.hmm #SNAP HMM file
+
+We will also provide Maker with the maker output gff (/workdir/arne/mme_genome_annotation/genome_annotation/maker/mme_rnd1_est_prot.maker.output/Mme_maker_rnd1.gff) file to bo base the predictions in the second MAKER run on SNAP and the maker gene predictions. Remove the filepaths to the protein and est evidence or set the flags for est2genome=0 and protein2genome=0.
+
+```{bash, eval=F}
+nohup /usr/local/mpich/bin/mpiexec -n 24 maker -base mme_rnd2 -qq >& maker_mme_rnd2_log.nohup &
+```
+
+Train SNAP again with the new maker output:
+```{bash, eval=F}
+maker2zff -x 0.75 -l 50 -d mme_rnd2_master_datastore_index.log
+
+#Validate gene models with fathom (comes with SNAP) to detect erroneous predictions:
+# gather some stats and validate
+fathom genome.ann genome.dna -gene-stats > gene-stats.log
+fathom genome.ann genome.dna -validate > snap_validate_output.txt
+cat snap_validate_output.txt | grep "error" 
+
+#Remove erronous gene models and rerun fathom (no errors):
+11220 genes, 11220 OK, 1690 warnings, 0 errors
+
+# collect the training sequences and annotations, plus 1000 surrounding bp for training
+fathom genome.ann genome.dna -categorize 1000 > categorize.log
+fathom uni.ann uni.dna -export 1000 -plus > uni-plus.log
+
+# assembly the HMM
+mkdir params
+cd params
+forge ../export.ann ../export.dna > forge.log
+cd ..
+# assembly the HMM
+hmm-assembler.pl my_genome params > mmenidia_genome_snap_rnd2.hmm
+```
+
+
+5. Run Maker2 (round3) with SNAP_rnd2 output, maker gff3 and Braker2-Augustus output:
+
+Create gff3 file of maker_round2 output and from Braker2-gff hints file:
+```{bash, eval=F}
+gff3_merge -d mme_rnd2_master_datastore_index.log -o Mme_maker_rnd2.gff
+fasta_merge -d mme_rnd2_master_datastore_index.log
+# GFF w/o the sequences
+gff3_merge -n -s -d mme_rnd2_master_datastore_index.log > Mme_maker_rnd2.noseq.gff
+
+#Create gff3 from Genemark gtf (don't use):
+nohup /programs/Augustus-3.3.3/scripts/gtf2gff.pl <genemark.gtf --gff3 --printExon --out=genemark_converted.gff &
+```
+
+```{bash, eval=F}
+nohup /usr/local/mpich/bin/mpiexec -n 24 maker -base mme_rnd3 -qq >& maker_mme_rnd3_log.nohup &
+```
+
+Create gff3 file of maker_round3 output:
+```{bash, eval=F}
+gff3_merge -d mme_rnd3_master_datastore_index.log -o Mme_maker_rnd3.gff
+fasta_merge -d mme_rnd3_master_datastore_index.log
+# GFF w/o the sequences
+gff3_merge -n -s -d mme_rnd3_master_datastore_index.log > Mme_maker_rnd3.noseq.gff
+
+cat Mme_maker_rnd3.gff | awk '{ if ($3 == "gene") print $0 }' | awk '{ sum += ($5 - $4) } END { print NR, sum / NR }'
+#Output: 20758 10731
+```
+
+
+6. Run Maker2 (round4) with SNAP_rnd2 output, maker gff3 (rnd3), Augustus(Braker2):
+
+Add maker_round3_gff to maker_opts.ctl file:  (/workdir/arne/mme_genome_annotation/genome_annotation/maker/mme_rnd3.maker.output/Mme_maker_rnd3.gff)
+
+```{bash, eval=F}
+nohup /usr/local/mpich/bin/mpiexec -n 24 maker -base mme_rnd4 -qq >& maker_mme_rnd4_log.nohup &
+```
+
+Create gff3 file of maker_round4 output:
+```{bash, eval=F}
+gff3_merge -d mme_rnd4_master_datastore_index.log -o Mme_maker_rnd4.gff
+fasta_merge -d mme_rnd4_master_datastore_index.log
+# GFF w/o the sequences
+gff3_merge -n -s -d mme_rnd4_master_datastore_index.log > Mme_maker_rnd4.noseq.gff
+
+cat Mme_maker_rnd4.gff | awk '{ if ($3 == "gene") print $0 }' | awk '{ sum += ($5 - $4) } END { print NR, sum / NR }'
+#Output: 20840 10651.7
+cut -f3 Mme_maker_rnd4.gff | grep "gene" | wc -l
+cut -f3 Mme_maker_rnd4.gff | grep "mRNA" | wc -l
+
+/programs/maker-2.32/bin/AED_cdf_generator.pl -b 0.025 Mme_maker_rnd4.noseq.gff > AED_rnd4.out
+```
+
+
+6. Run Maker2 (round 5) with SNAP_rnd2, maker gff3 (rnd4) and Augustus(Braker2) output:
+Add maker_round4_gff to maker_opts.ctl file:  (/workdir/arne/mme_genome_annotation/genome_annotation/maker/mme_rnd4.maker.output/Mme_maker_rnd4.gff)
+
+```{bash, eval=F}
+nohup /usr/local/mpich/bin/mpiexec -n 24 maker -base mme_rnd5 -qq >& maker_mme_rnd5_log.nohup &
+```
+
+Create gff3 file of maker_round5 output:
+```{bash, eval=F}
+gff3_merge -d mme_rnd5_master_datastore_index.log -o Mme_maker_rnd5_orig.gff
+gff3_merge -d mme_rnd5_master_datastore_index.log -o Mme_maker_rnd5.gff
+
+fasta_merge -d mme_rnd5_master_datastore_index.log
+
+# GFF w/o the sequences
+gff3_merge -n -s -d mme_rnd5_master_datastore_index.log > Mme_maker_rnd5_orig.noseq.gff
+gff3_merge -n -s -d mme_rnd5_master_datastore_index.log > Mme_maker_rnd5.noseq.gff
+
+cat Mme_maker_rnd5.gff | awk '{ if ($3 == "gene") print $0 }' | awk '{ sum += ($5 - $4) } END { print NR, sum / NR }'
+#Output: 20843 10653.6
+
+/programs/maker-2.32/bin/AED_cdf_generator.pl -b 0.025 Mme_maker_rnd5.noseq.gff > AED_rnd5.out
+
+```
+
+7. Format maker2 output:
+```{bash, eval=F}
+# create naming table (there are additional options for naming beyond defaults)
+maker_map_ids --prefix mme --justify 5  Mme_maker_rnd5.gff > Mme_maker_rnd5.name.map
+# replace names in GFF files
+map_gff_ids Mme_maker_rnd5.name.map Mme_maker_rnd5.gff
+map_gff_ids Mme_maker_rnd5.name.map Mme_maker_rnd5.noseq.gff
+# replace names in FASTA headers
+map_fasta_ids Mme_maker_rnd5.name.map mme_rnd5.all.maker.proteins.fasta
+map_fasta_ids Mme_maker_rnd5.name.map mme_rnd5.all.maker.transcripts.fasta
+```
+
+```{bash, eval=F}
+# extract gene annotations without evidence
+awk '/contig|maker\tgene|maker\tmRNA|maker\tCDS|maker\texon/' Mme_maker_rnd5.noseq.gff > mme_annotation_genome_clean.noseq.gff
+```
+
+
+8. Functional annotation of annotated maker gene models using swissprot, interproscan ang eggNOG:
+
+
+a. Blastp as test against swissprot db -> output table for all hits
+b. Create input for Blast2Go
+    b.1. Blast against swissprot using diamond (faster than blast)
+    b.2. Align using interproscan
+    b.3. Run blast2go with ips and diamond outputs
+```{bash, eval=F}
+#Blastp against uniprot database (output table, but use diamond/interpro)
+nohup makeblastdb -in /workdir/arne/mme_genome_annotation/protein_fastas/uniprot_sprot.fasta -parse_seqids -blastdb_version 5 -title uniprot_sprot_protdb -dbtype prot > nohup_makeblastdb.log &
+
+nohup blastp -query /workdir/arne/mme_genome_annotation/genome_annotation/maker/mme_rnd5.maker.output/mme_rnd5.all.maker.proteins.fasta -db uniprot_sprot.fasta -evalue 1e-6 -outfmt 6 -out output_mme_annotation_final.blastp > nohup_blastp_mme_annot_uniprot.log &
+
+# Blast2GO annotation:
+##Run diamond againt swissprot database:
+/programs/diamond/diamond makedb --in uniprot_sprot.fasta -d uniprot_sprot
+
+nohup /programs/diamond/diamond blastp -p 12 --db uniprot_sprot --query /workdir/arne/mme_genome_annotation/genome_annotation/maker/mme_rnd5.maker.output/mme_rnd5.all.maker.proteins.fasta --outfmt 5 --top 10 --evalue 1e-5 --block-size 20 --index-chunks 1 -t /workdir/arne/mme_genome_annotation/genome_annotation -o mme_genome_swissuniprot_blastresults.xml &
+
+nohup /programs/diamond/diamond blastp -p 12 --db uniprot_sprot --query /workdir/arne/mme_genome_annotation/genome_annotation/maker/mme_rnd5.maker.output/mme_rnd5.all.maker.proteins.fasta --outfmt 6 --top 10 --evalue 1e-5 --block-size 20 --index-chunks 1 -t /workdir/arne/mme_genome_annotation/genome_annotation -o mme_genome_swissuniprot_blastresults.txt &
+
+#Use interproscan to identify gene families, Panther annotationa and GO terms:
+#Split fasta file into 5 subsets to speed up processing:
+#awk 'BEGIN {n_seq=0;} /^>/ {if(n_seq%5000==0){file=sprintf("myseq%d.fa",n_seq);} print >> file; #n_seq++; next;} { print >> file; }' < mme_annotation_final.proteins.fasta
+
+##Run interproscan all proteins:
+nohup sh /workdir/arne/mme_genome_annotation/interproscan/interproscan.sh -appl Pfam,Panther -dp -f XML --goterms -iprlookup --pathways -t p -i /workdir/arne/mme_genome_annotation/genome_annotation/maker/mme_rnd5.maker.output/mme_rnd5.all.maker.proteins.fasta -b /workdir/arne/mme_genome_annotation/genome_annotation/mme_genomeannotation_final.iprscan > mme_genome_ips_nohup.log &
+
+
+
+##Run blast2go (in omicsbox 1.2.4) with blast-results and interproscan2
+1. Annotate blast results with GO terms in blast2go using defeault parameters and the 2019_11 GOA database
+2. Merge interproscan results with blast2go annotation using defeault parameters
+```
+
+
+
+
+```{r, eva;=F}
+install.packages("remotes")
+#Sys.setenv(R_REMOTES_STANDALONE="true")
+#usethis::edit_r_environ() to change R environment to: R_REMOTES_NO_ERRORS_FROM_WARNINGS=true
+remotes::install_github("asrinivasan-oa/gread")
+library(gread)
+library(tidyverse)
+
+gtf_file <- file.path("/Users/arnejacobs/Dropbox/Cornell_Postdoc/analysis/results/mme_genome_annotation/draftgenome_anna_annotation/mme_annotation_draftgenome_clean.noseq.gff")
+gtf <- read_format(gtf_file)
+# update gtf with intron coordinats from the exon gaps 
+# and return the updated object
+ans <- construct_introns(gtf, update=TRUE)[] # default
+# same as above, but returns only constructed introns
+introns <- construct_introns(gtf, update=FALSE)
+introns.df = as_tibble(introns)
+
+ggplot(data = introns.df) + 
+  geom_histogram(aes(x=width), bins = 1000)
+
+introns.df.orderedbywidth = arrange(introns.df, width)
+
+introns.df.shortintrons = filter(introns.df, width < 10)
+write_csv(introns.df.shortintrons, "/Users/arnejacobs/Dropbox/Cornell_Postdoc/analysis/results/mme_genome_annotation/draftgenome_anna_annotation/table_geneswithshortintrons.csv")
+```
+
+
+
+Remove all genes with short introns:
+```{bash, eval=F}
+grep -v -f list_genes_shortintrons_remove.txt mme_genome.gff > mme_genome_filtered.gff
+```
+
+
+
+
+
+
