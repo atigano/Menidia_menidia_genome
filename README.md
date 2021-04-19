@@ -173,7 +173,7 @@ bedtools map -a genome_windows_50k_4GC.bed -b shotgun2dovetail_1-27_filt_snp_het
 ```
 To plot heterozygosity in 50-kb windows along the genome see R script `manhattan_plot_heterozygosity.R`
 
-### Scipts to estimate divergence between the Connecticut and the Georgia genomes 
+## Scipts to estimate divergence between the Connecticut and the Georgia genomes 
 ```
 nucmer --maxgap 2000 -p mummerCT2GA --mincluster 1000 menidia_menidia_chronly.fa menidia_q30_gapClosed.filter500.fa
 delta-filter -g -l 10000 mummerCT2GA.delta > mummerCT2GA.filter10k.delta
